@@ -9,6 +9,8 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
 
 -- ==========================================
 -- KONFIGURASI KEY
@@ -20,13 +22,120 @@ local KEYS = {
 }
 
 -- ==========================================
+-- FUNGSI DRAG (Buat Hub Mengambang)
+-- ==========================================
+local function makeDraggable(frame, dragArea)
+    local dragging = false
+    local dragInput, mousePos, framePos
+    
+    dragArea.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            mousePos = input.Position
+            framePos = frame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    dragArea.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - mousePos
+            frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- ==========================================
+-- SPLASH SCREEN (LOADING)
+-- ==========================================
+local function createSplash()
+    local splash = Instance.new("ScreenGui")
+    splash.Name = "RizTeamSplash"
+    splash.ResetOnSpawn = false
+    splash.Parent = CoreGui
+
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
+    bg.BorderSizePixel = 0
+    bg.Parent = splash
+
+    local logo = Instance.new("TextLabel")
+    logo.Size = UDim2.new(1, 0, 0, 60)
+    logo.Position = UDim2.new(0, 0, 0.4, 0)
+    logo.BackgroundTransparency = 1
+    logo.Text = "RIZTEAM HUB"
+    logo.TextColor3 = Color3.fromRGB(0, 255, 100)
+    logo.Font = Enum.Font.GothamBlack
+    logo.TextSize = 40
+    logo.TextTransparency = 1
+    logo.Parent = bg
+
+    local sub = Instance.new("TextLabel")
+    sub.Size = UDim2.new(1, 0, 0, 30)
+    sub.Position = UDim2.new(0, 0, 0.4, 50)
+    sub.BackgroundTransparency = 1
+    sub.Text = "Loading..."
+    sub.TextColor3 = Color3.fromRGB(200, 200, 200)
+    sub.Font = Enum.Font.Gotham
+    sub.TextSize = 16
+    sub.TextTransparency = 1
+    sub.Parent = bg
+
+    local barBg = Instance.new("Frame")
+    barBg.Size = UDim2.new(0, 300, 0, 8)
+    barBg.Position = UDim2.new(0.5, -150, 0.5, 80)
+    barBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    barBg.BorderSizePixel = 0
+    barBg.Parent = bg
+    local barBgCorner = Instance.new("UICorner")
+    barBgCorner.CornerRadius = UDim.new(1, 0)
+    barBgCorner.Parent = barBg
+
+    local bar = Instance.new("Frame")
+    bar.Size = UDim2.new(0, 0, 1, 0)
+    bar.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+    bar.BorderSizePixel = 0
+    bar.Parent = barBg
+    local barCorner = Instance.new("UICorner")
+    barCorner.CornerRadius = UDim.new(1, 0)
+    barCorner.Parent = bar
+
+    -- Animasi Muncul
+    TweenService:Create(logo, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+    TweenService:Create(sub, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+    TweenService:Create(bar, TweenInfo.new(2, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+
+    task.wait(2.5)
+    
+    -- Animasi Hilang
+    TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(logo, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+    TweenService:Create(sub, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+    TweenService:Create(barBg, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+    task.wait(0.6)
+    splash:Destroy()
+end
+
+-- ==========================================
 -- WATERMARK
 -- ==========================================
 local function createWatermark()
     local gui = Instance.new("ScreenGui")
     gui.Name = "RizTeamWatermark"
     gui.ResetOnSpawn = false
-    gui.Parent = game:GetService("CoreGui")
+    gui.Parent = CoreGui
 
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 260, 0, 45)
@@ -75,7 +184,7 @@ local function createKeyGUI()
     local gui = Instance.new("ScreenGui")
     gui.Name = "RizTeamKeySystem"
     gui.ResetOnSpawn = false
-    gui.Parent = game:GetService("CoreGui")
+    gui.Parent = CoreGui
 
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 380, 0, 240)
@@ -176,9 +285,9 @@ local function Fullbright()
 end
 
 -- ==========================================
--- FITUR: ESP (Player & Object)
+-- FITUR: ESP (Player)
 -- ==========================================
-local espFolder = Instance.new("Folder", game:GetService("CoreGui"))
+local espFolder = Instance.new("Folder", CoreGui)
 espFolder.Name = "RizTeamESP"
 
 local function createESP(player)
@@ -355,11 +464,9 @@ local function AutoHeal()
 end
 
 -- ==========================================
--- FITUR: AUTO PARRY (Pro) - By remote event
+-- FITUR: AUTO PARRY (Pro)
 -- ==========================================
 local function AutoParry()
-    -- Catatan: Nama remote event harus disesuaikan dengan game
-    -- Ini auto-detect dan click remote yang namanya mengandung "Parry"
     for _, remote in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
         if remote:IsA("RemoteEvent") and string.find(string.lower(remote.Name), "parry") then
             RunService.Heartbeat:Connect(function()
@@ -375,7 +482,6 @@ end
 -- FITUR: AUTO GENERATOR (Pro)
 -- ==========================================
 local function AutoGenerator()
-    -- Cari objek generator di workspace
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj:IsA("ProximityPrompt") and (string.find(string.lower(obj.Parent.Name), "gen") or string.find(string.lower(obj.Parent.Name), "generator")) then
             if obj.HoldDuration > 0 then
@@ -398,7 +504,7 @@ local function AutoGenerator()
 end
 
 -- ==========================================
--- MENU UI (Setelah Key Valid)
+-- MENU UI (Hub Mengambang)
 -- ==========================================
 local function openMainMenu(tier)
     createWatermark()
@@ -406,7 +512,7 @@ local function openMainMenu(tier)
     local gui = Instance.new("ScreenGui")
     gui.Name = "RizTeamMenu"
     gui.ResetOnSpawn = false
-    gui.Parent = game:GetService("CoreGui")
+    gui.Parent = CoreGui
 
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 320, 0, 420)
@@ -442,6 +548,9 @@ local function openMainMenu(tier)
     sub.Font = Enum.Font.Gotham
     sub.TextSize = 11
     sub.Parent = frame
+
+    -- Bikin Frame bisa digeser (mengambang)
+    makeDraggable(frame, title)
 
     local list = Instance.new("ScrollingFrame")
     list.Size = UDim2.new(1, -20, 0, 330)
@@ -511,7 +620,7 @@ local function openMainMenu(tier)
 end
 
 -- ==========================================
--- LOAD SCRIPT BERDASARKAN KEY
+-- LOAD SCRIPT
 -- ==========================================
 local function loadScript(tier)
     if tier == "free" then
@@ -524,8 +633,9 @@ local function loadScript(tier)
 end
 
 -- ==========================================
--- MAIN - START KEY SYSTEM
+-- MAIN - START
 -- ==========================================
+createSplash() -- Panggil Splash Screen pertama
 local gui, input, btn, footer = createKeyGUI()
 
 btn.MouseButton1Click:Connect(function()
