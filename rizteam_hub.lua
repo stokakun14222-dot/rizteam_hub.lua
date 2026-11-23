@@ -13,8 +13,12 @@ local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
 -- ==========================================
--- KEY SYSTEM
+-- VARIABEL GLOBAL
 -- ==========================================
+local isAimbotEnabled = false
+local isSilentAimEnabled = false
+local isCrosshairEnabled = false
+
 local KEYS = {
     ["RIZ-FREE-111"] = "free",
     ["RIZ-PRO-222"]  = "pro",
@@ -53,8 +57,7 @@ end
 -- SPLASH SCREEN
 -- ==========================================
 local function createSplash()
-    local splash = Instance.new("ScreenGui")
-    splash.Name = "RizTeamSplash"; splash.ResetOnSpawn = false; splash.Parent = CoreGui
+    local splash = Instance.new("ScreenGui"); splash.Name = "RizTeamSplash"; splash.ResetOnSpawn = false; splash.Parent = CoreGui
     local bg = Instance.new("Frame"); bg.Size = UDim2.new(1,0,1,0); bg.BackgroundColor3 = Color3.fromRGB(5,5,10); bg.BorderSizePixel = 0; bg.Parent = splash
     local logo = Instance.new("TextLabel"); logo.Size = UDim2.new(1,0,0,60); logo.Position = UDim2.new(0,0,0.4,0); logo.BackgroundTransparency = 1; logo.Text = "RIZTEAM HUB"; logo.TextColor3 = Color3.fromRGB(0,255,100); logo.Font = Enum.Font.GothamBlack; logo.TextSize = 40; logo.TextTransparency = 1; logo.Parent = bg
     local sub = Instance.new("TextLabel"); sub.Size = UDim2.new(1,0,0,30); sub.Position = UDim2.new(0,0,0.4,50); sub.BackgroundTransparency = 1; sub.Text = "Loading Interface..."; sub.TextColor3 = Color3.fromRGB(200,200,200); sub.Font = Enum.Font.Gotham; sub.TextSize = 16; sub.TextTransparency = 1; sub.Parent = bg
@@ -93,126 +96,56 @@ local function createKeyGUI()
 end
 
 -- ==========================================
--- FITUR ESP (Multiple Targets)
+-- FITUR ESP
 -- ==========================================
 local espFolder = Instance.new("Folder", CoreGui); espFolder.Name = "RizTeamESP"
 
 local function createESP(player, type)
-    local color
-    if type == "survivor" then color = Color3.fromRGB(0, 255, 100)
-    elseif type == "killer" then color = Color3.fromRGB(255, 50, 50)
-    else color = Color3.fromRGB(255, 255, 0) end
-
-    local highlight = Instance.new("Highlight")
-    highlight.FillColor = color
-    highlight.OutlineColor = color
-    highlight.FillTransparency = 0.5
-    highlight.Parent = espFolder
-    highlight.Adornee = player.Character
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Parent = espFolder
-    billboard.Adornee = player.Character:FindFirstChild("Head")
-
-    local name = Instance.new("TextLabel")
-    name.Size = UDim2.new(1, 0, 0.5, 0)
-    name.BackgroundTransparency = 1
-    name.Text = player.Name
-    name.TextColor3 = color
-    name.TextStrokeTransparency = 0
-    name.Font = Enum.Font.GothamBold
-    name.TextSize = 14
-    name.Parent = billboard
-
+    local color = type == "survivor" and Color3.fromRGB(0, 255, 100) or type == "killer" and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 0)
+    local highlight = Instance.new("Highlight"); highlight.FillColor = color; highlight.OutlineColor = color; highlight.FillTransparency = 0.5; highlight.Parent = espFolder; highlight.Adornee = player.Character
+    local billboard = Instance.new("BillboardGui"); billboard.Size = UDim2.new(0, 200, 0, 50); billboard.StudsOffset = Vector3.new(0, 3, 0); billboard.AlwaysOnTop = true; billboard.Parent = espFolder; billboard.Adornee = player.Character:FindFirstChild("Head")
+    local name = Instance.new("TextLabel"); name.Size = UDim2.new(1, 0, 0.5, 0); name.BackgroundTransparency = 1; name.Text = player.Name; name.TextColor3 = color; name.TextStrokeTransparency = 0; name.Font = Enum.Font.GothamBold; name.TextSize = 14; name.Parent = billboard
     RunService.RenderStepped:Connect(function()
         if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
         if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
-        highlight.Adornee = player.Character
-        billboard.Adornee = player.Character:FindFirstChild("Head")
+        highlight.Adornee = player.Character; billboard.Adornee = player.Character:FindFirstChild("Head")
         local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude)
         name.Text = player.Name .. " [" .. dist .. "m]"
     end)
 end
 
 local function setupPlayerESP(typeFilter)
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then 
-            createESP(player, typeFilter) 
-        end
-    end
-    Players.PlayerAdded:Connect(function(player)
-        if player ~= LocalPlayer then
-            player.CharacterAdded:Wait()
-            task.wait(1)
-            createESP(player, typeFilter)
-        end
-    end)
+    for _, player in pairs(Players:GetPlayers()) do if player ~= LocalPlayer then createESP(player, typeFilter) end end
+    Players.PlayerAdded:Connect(function(player) if player ~= LocalPlayer then player.CharacterAdded:Wait(); task.wait(1); createESP(player, typeFilter) end end)
 end
 
--- ==========================================
--- FITUR OBJECT ESP (Generator, Exit)
--- ==========================================
 local function createObjectESP(name, color)
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj:IsA("BasePart") and string.find(string.lower(obj.Name), string.lower(name)) then
-            local highlight = Instance.new("Highlight")
-            highlight.FillColor = color
-            highlight.OutlineColor = color
-            highlight.FillTransparency = 0.5
-            highlight.Parent = espFolder
-            highlight.Adornee = obj
+            local highlight = Instance.new("Highlight"); highlight.FillColor = color; highlight.OutlineColor = color; highlight.FillTransparency = 0.5; highlight.Parent = espFolder; highlight.Adornee = obj
         end
     end
 end
 
 local function setupObjectESP(target)
-    if target == "generator" then
-        createObjectESP("gen", Color3.fromRGB(255, 255, 0))
-        createObjectESP("generator", Color3.fromRGB(255, 255, 0))
-    elseif target == "exit" then
-        createObjectESP("exit", Color3.fromRGB(0, 255, 255))
-        createObjectESP("door", Color3.fromRGB(0, 255, 255))
-    end
+    if target == "generator" then createObjectESP("gen", Color3.fromRGB(255, 255, 0)); createObjectESP("generator", Color3.fromRGB(255, 255, 0))
+    elseif target == "exit" then createObjectESP("exit", Color3.fromRGB(0, 255, 255)); createObjectESP("door", Color3.fromRGB(0, 255, 255)) end
 end
 
 -- ==========================================
--- FITUR: FULLBRIGHT, NOCLIP, SPEED
+-- FITUR LAINNYA
 -- ==========================================
 local function Fullbright()
-    for _, v in pairs(Lighting:GetChildren()) do
-        if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then v:Destroy() end
-    end
-    Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-    Lighting.Brightness = 3
-    Lighting.ClockTime = 12
-    Lighting.GlobalShadows = false
-    Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-    Lighting.FogEnd = 1e6
-    pcall(function() Lighting.EnvironmentDiffuseScale = 1 end)
+    for _, v in pairs(Lighting:GetChildren()) do if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then v:Destroy() end end
+    Lighting.Ambient = Color3.fromRGB(255, 255, 255); Lighting.Brightness = 3; Lighting.ClockTime = 12; Lighting.GlobalShadows = false; Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255); Lighting.FogEnd = 1e6
 end
 
 local function Noclip()
-    RunService.Stepped:Connect(function()
-        if LocalPlayer.Character then
-            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
-                if v:IsA("BasePart") then v.CanCollide = false end
-            end
-        end
-    end)
+    RunService.Stepped:Connect(function() if LocalPlayer.Character then for _, v in pairs(LocalPlayer.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end end)
 end
 
-local function SpeedHack(speed)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.WalkSpeed = speed or 50
-    end
-end
+local function SpeedHack(speed) if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = speed or 50 end end
 
--- ==========================================
--- FITUR: FLY
--- ==========================================
 local function Fly()
     local flying, bv, bg = false
     UserInputService.InputBegan:Connect(function(input, gpe)
@@ -220,17 +153,10 @@ local function Fly()
         if input.KeyCode == Enum.KeyCode.F then
             flying = not flying
             if flying then
-                local char = LocalPlayer.Character
-                if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-                bv = Instance.new("BodyVelocity", char.HumanoidRootPart)
-                bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                bg = Instance.new("BodyGyro", char.HumanoidRootPart)
-                bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-                bg.CFrame = char.HumanoidRootPart.CFrame
-            else
-                if bv then bv:Destroy() end
-                if bg then bg:Destroy() end
-            end
+                local char = LocalPlayer.Character; if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+                bv = Instance.new("BodyVelocity", char.HumanoidRootPart); bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+                bg = Instance.new("BodyGyro", char.HumanoidRootPart); bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5); bg.CFrame = char.HumanoidRootPart.CFrame
+            else if bv then bv:Destroy() end; if bg then bg:Destroy() end end
         end
     end)
     RunService.RenderStepped:Connect(function()
@@ -241,62 +167,87 @@ local function Fly()
     end)
 end
 
--- ==========================================
--- FITUR: AIMBOT
--- ==========================================
-local function Aimbot(targetType)
-    local target = nil
-    local maxDist = 500
-
-    RunService.RenderStepped:Connect(function()
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local dist = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-                if dist < maxDist then
-                    maxDist = dist
-                    target = player
-                end
-            end
-        end
-        if target and target.Character and target.Character:FindFirstChild("Head") then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.Head.Position)
-        end
-    end)
-end
-
--- ==========================================
--- FITUR: FLASHLIGHT (Penerangan Karakter)
--- ==========================================
 local function Flashlight()
-    local light = Instance.new("PointLight")
-    light.Brightness = 5
-    light.Range = 50
-    light.Color = Color3.fromRGB(255, 255, 255)
-    light.Parent = LocalPlayer.Character.HumanoidRootPart
+    local light = Instance.new("PointLight"); light.Brightness = 5; light.Range = 50; light.Color = Color3.fromRGB(255, 255, 255); light.Parent = LocalPlayer.Character.HumanoidRootPart
 end
 
--- ==========================================
--- FITUR: AUTO GENERATOR (Fix)
--- ==========================================
 local function AutoGenerator()
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj:IsA("ProximityPrompt") and (string.find(string.lower(obj.Parent.Name), "gen") or string.find(string.lower(obj.Parent.Name), "generator")) then
-            obj.HoldDuration = 0
-            obj.Enabled = true
-            
-            -- Simulasi nahan prompt biar gak gagal
-            spawn(function()
-                while task.wait(0.1) do
-                    if obj:IsDescendantOf(Workspace) then
-                        pcall(function()
-                            fireproximityprompt(obj)
-                        end)
-                    end
-                end
-            end)
+            obj.HoldDuration = 0; obj.Enabled = true
+            spawn(function() while task.wait(0.1) do if obj:IsDescendantOf(Workspace) then pcall(function() fireproximityprompt(obj) end) end end end)
         end
     end
 end
+
+-- ==========================================
+-- AIMBOT & CROSSHAIR (Support Android)
+-- ==========================================
+local function toggleAimbot(state) isAimbotEnabled = state end
+local function toggleSilentAim(state) isSilentAimEnabled = state end
+local function toggleCrosshair(state) isCrosshairEnabled = state end
+
+-- Logika Loop Aimbot (Buat Android)
+RunService.RenderStepped:Connect(function()
+    if isAimbotEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local closestDist = 500
+        local targetHead = nil
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                local dist = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.Head.Position).Magnitude
+                if dist < closestDist then
+                    closestDist = dist
+                    targetHead = player.Character.Head
+                end
+            end
+        end
+        
+        if targetHead then
+            local currentCFrame = Camera.CFrame
+            local targetCFrame = CFrame.new(currentCFrame.Position, targetHead.Position)
+            Camera.CFrame = currentCFrame:Lerp(targetCFrame, 0.3)
+        end
+    end
+end)
+
+-- Logika Silent Aim (Tembakan ngikutin musuh tanpa mindahin kamera)
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    if isSilentAimEnabled and (method == "Fire" or method == "InvokeServer" or method == "FireServer") then
+        local args = {...}
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local closestDist = 500
+            local targetHead = nil
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                    local dist = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.Head.Position).Magnitude
+                    if dist < closestDist then closestDist = dist; targetHead = player.Character.Head end
+                end
+            end
+            if targetHead then
+                for i, v in pairs(args) do
+                    if typeof(v) == "CFrame" then args[i] = CFrame.new(v.Position, targetHead.Position) end
+                    if typeof(v) == "Vector3" then args[i] = targetHead.Position end
+                end
+                return oldNamecall(self, unpack(args))
+            end
+        end
+    end
+    return oldNamecall(self, ...)
+end)
+setreadonly(mt, true)
+
+-- Crosshair GUI
+local crosshairGui = Instance.new("ScreenGui"); crosshairGui.Name = "RizTeamCrosshair"; crosshairGui.ResetOnSpawn = false; crosshairGui.Parent = CoreGui
+local crosshair = Instance.new("TextLabel"); crosshair.Size = UDim2.new(0, 20, 0, 20); crosshair.Position = UDim2.new(0.5, -10, 0.5, -10); crosshair.BackgroundTransparency = 1; crosshair.Text = "+"; crosshair.TextColor3 = Color3.fromRGB(0, 255, 100); crosshair.Font = Enum.Font.GothamBold; crosshair.TextSize = 24; crosshair.TextStrokeTransparency = 0; crosshair.Visible = false; crosshair.Parent = crosshairGui
+
+RunService.RenderStepped:Connect(function()
+    if crosshair then crosshair.Visible = isCrosshairEnabled end
+end)
 
 -- ==========================================
 -- UI HORIZONTAL
@@ -335,7 +286,7 @@ local function openMainMenu(tier)
     btnInfo.MouseButton1Click:Connect(function() pageInfo.Visible = true; pageMain.Visible = false; btnInfo.BackgroundColor3 = Color3.fromRGB(0,180,90); btnMain.BackgroundColor3 = Color3.fromRGB(22,22,38) end)
     btnMain.MouseButton1Click:Connect(function() pageInfo.Visible = false; pageMain.Visible = true; btnInfo.BackgroundColor3 = Color3.fromRGB(22,22,38); btnMain.BackgroundColor3 = Color3.fromRGB(0,180,90) end)
 
-    local function addToggle(name, callback, isPro)
+    local function addToggle(name, callback, isPro, stateCallback)
         if isPro and tier ~= "pro" and tier ~= "owner" then return end
         local btn = Instance.new("TextButton"); btn.Size = UDim2.new(1,-10,0,32); btn.BackgroundColor3 = Color3.fromRGB(22,22,38); btn.TextColor3 = Color3.fromRGB(255,255,255); btn.Font = Enum.Font.Gotham; btn.TextSize = 12; btn.Text = " " .. name; btn.TextXAlignment = Enum.TextXAlignment.Left; btn.AutoButtonColor = false; btn.Parent = scroll
         local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,6); c.Parent = btn
@@ -343,7 +294,8 @@ local function openMainMenu(tier)
         btn.MouseButton1Click:Connect(function()
             toggle = not toggle
             btn.BackgroundColor3 = toggle and Color3.fromRGB(0,140,70) or Color3.fromRGB(22,22,38)
-            if toggle then pcall(callback) end
+            if stateCallback then stateCallback(toggle) end
+            if toggle and callback then pcall(callback) end
         end)
     end
 
@@ -356,7 +308,9 @@ local function openMainMenu(tier)
     addToggle("Fly [Tekan F]", Fly, false)
     addToggle("Speed 50", function() SpeedHack(50) end, false)
     addToggle("Flashlight", Flashlight, false)
-    addToggle("Aimbot [PRO]", function() Aimbot("closest") end, true)
+    addToggle("Crosshair", nil, false, toggleCrosshair)
+    addToggle("Aimbot Android [PRO]", nil, true, toggleAimbot)
+    addToggle("Silent Aim [PRO]", nil, true, toggleSilentAim)
     addToggle("Auto Generator [PRO]", AutoGenerator, true)
     addToggle("Auto Parry [PRO]", function() --[[ fungsi ]] end, true)
     addToggle("Auto Heal [PRO]", function() RunService.Heartbeat:Connect(function() if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.Health = LocalPlayer.Character.Humanoid.MaxHealth end end) end, true)
